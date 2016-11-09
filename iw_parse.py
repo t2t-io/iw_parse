@@ -7,6 +7,7 @@
 # of each AP (cell) below. They take one argument, the bunch of text
 # describing one cell in iwlist scan and return a property of that cell.
 
+from __future__ import print_function
 import re
 import subprocess
 
@@ -283,4 +284,50 @@ def get_interfaces(interface="wlan0"):
     """
     return get_parsed_cells(call_iwlist(interface).split('\n'))
 
+
+def byte_to_hex(b):
+    x = hex(b)[2:]
+    return x if len(x) > 1 else "0%s" % (x)
+
+
+def convert_unistr_to_utf8_hex_string(string):
+    return ("".join([ byte_to_hex(ord(b)) for b in string.decode('unicode-escape') ])).upper()
+
+def detect_encryption_type(encryption):
+    tokens = encryption.split(' ')
+    return 0 if tokens[0] == 'WPA2' else 1
+
+
+if __name__ == '__main__':
+    import json
+    import os
+    import sys
+    adapter = os.environ['WIRELESS_ADAPTER'] if 'WIRELESS_ADAPTER' in os.environ.keys() else 'wlan0'
+    threshold = int(os.environ['SIGNAL_THRESHOLD']) if 'SIGNAL_THRESHOLD' in os.environ.keys() else 30
+    print("using adapter: %s" % (adapter), file=sys.stderr)
+    print("using quality threshold (0 ~ 100): %s" % (threshold), file=sys.stderr)
+    networks = get_interfaces(interface=adapter)
+    if 'RESULT_FORMAT' in os.environ.keys() and os.environ['RESULT_FORMAT'] == 'raw':
+        xs = networks
+    else:
+        xs = [
+            [
+                ''.join(n['Address'].split(':')),
+                int(n['Channel']),
+                int(n['Quality']),
+                int(n['Signal Level'].split(' ')[0]),
+                detect_encryption_type(n['Encryption']),
+                convert_unistr_to_utf8_hex_string(n['Name'])
+            ]
+            for n in networks
+        ]
+        xs = [ x for x in xs if x[2] > threshold ]
+
+    data = json.dumps(xs, separators=(',', ':'))
+    raw = json.dumps(networks, separators=(',', ':'))
+    print("found %d/%d SSIDs, and output %d bytes of json content (raw: %d bytes)" % (len(xs), len(networks), len(data), len(raw)), file=sys.stderr)
+    print("raw: ", file=sys.stderr)
+    print(raw, file=sys.stderr)
+    print("\n\n\n", file=sys.stderr)
+    print(data)
 
