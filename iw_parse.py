@@ -303,7 +303,7 @@ if __name__ == '__main__':
     import os
     import sys
     adapter = os.environ['WIRELESS_ADAPTER'] if 'WIRELESS_ADAPTER' in os.environ.keys() else 'wlan0'
-    threshold = int(os.environ['SIGNAL_THRESHOLD']) if 'SIGNAL_THRESHOLD' in os.environ.keys() else 30
+    threshold = int(os.environ['QUALITY_THRESHOLD']) if 'QUALITY_THRESHOLD' in os.environ.keys() else 30
     print("using adapter: %s" % (adapter), file=sys.stderr)
     print("using quality threshold (0 ~ 100): %s" % (threshold), file=sys.stderr)
     networks = get_interfaces(interface=adapter)
