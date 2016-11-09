@@ -307,6 +307,7 @@ if __name__ == '__main__':
     print("using adapter: %s" % (adapter), file=sys.stderr)
     print("using quality threshold (0 ~ 100): %s" % (threshold), file=sys.stderr)
     networks = get_interfaces(interface=adapter)
+    networks = sorted(networks, key=lambda k: k['Name'])
     if 'RESULT_FORMAT' in os.environ.keys() and os.environ['RESULT_FORMAT'] == 'raw':
         xs = networks
     else:
