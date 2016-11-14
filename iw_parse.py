@@ -285,9 +285,10 @@ def get_interfaces(interface="wlan0"):
     return get_parsed_cells(call_iwlist(interface).split('\n'))
 
 
-def byte_to_hex(b):
+def byte_to_hex(b, padding=True):
     x = hex(b)[2:]
-    return x if len(x) > 1 else "0%s" % (x)
+    y = x if len(x) > 1 else "0%s" % (x)
+    return y if padding else x
 
 
 def convert_unistr_to_utf8_hex_string(string):
@@ -308,26 +309,48 @@ if __name__ == '__main__':
     print("using quality threshold (0 ~ 100): %s" % (threshold), file=sys.stderr)
     networks = get_interfaces(interface=adapter)
     networks = sorted(networks, key=lambda k: k['Name'])
-    if 'RESULT_FORMAT' in os.environ.keys() and os.environ['RESULT_FORMAT'] == 'raw':
-        xs = networks
-    else:
-        xs = [
-            [
-                ''.join(n['Address'].split(':')),
-                int(n['Channel']),
-                int(n['Quality']),
-                int(n['Signal Level'].split(' ')[0]),
-                detect_encryption_type(n['Encryption']),
-                convert_unistr_to_utf8_hex_string(n['Name'])
-            ]
-            for n in networks
-        ]
-        xs = [ x for x in xs if x[2] > threshold ]
 
-    data = json.dumps(xs, separators=(',', ':'))
+    xs = [
+        [
+            ''.join(n['Address'].split(':')),
+            int(n['Channel']),
+            int(n['Quality']),
+            int(n['Signal Level'].split(' ')[0]),
+            detect_encryption_type(n['Encryption']),
+            convert_unistr_to_utf8_hex_string(n['Name'])
+        ]
+        for n in networks
+    ]
+    xs = [ x for x in xs if x[2] > threshold ]
+    ys = [ 
+        [
+            x[0],                           # MAC address
+            byte_to_hex(x[1], False),       # Channel
+            byte_to_hex(x[2], False),       # Quality
+            byte_to_hex(x[3] + 256, False), # Signal Level
+            str(x[4]),                      # Encryption
+            x[5]                            # SSID
+        ] 
+        for x in xs 
+    ]
+    ys = [ "\t".join(y) for y in ys ]
+    data_csv = "\n".join(ys)
+    data_json = json.dumps(xs, separators=(',', ':'))
+
+    if 'RESULT_FORMAT' in os.environ.keys() and os.environ['RESULT_FORMAT'] == 'raw':
+        data = json.dumps(network, separators=(',', ':'))
+        fmt = 'raw'
+    elif 'RESULT_FORMAT' in os.environ.keys() and os.environ['RESULT_FORMAT'] == 'csv':
+        data = data_csv
+        fmt = 'csv'
+    else:
+        data = data_json
+        fmt = 'json'
+
     raw = json.dumps(networks, separators=(',', ':'))
-    print("found %d/%d SSIDs, and output %d bytes of json content (raw: %d bytes)" % (len(xs), len(networks), len(data), len(raw)), file=sys.stderr)
-    print("raw: ", file=sys.stderr)
+    print("found %d/%d SSIDs, and output %d bytes of json content (raw: %d bytes)" % (len(xs), len(networks), len(data_json), len(raw)), file=sys.stderr)
+    print("found %d/%d SSIDs, and output %d bytes of csv  content (raw: %d bytes)" % (len(xs), len(networks), len(data_csv) , len(raw)), file=sys.stderr)
+    print("raw (to %s): " % (fmt), file=sys.stderr)
     print(raw, file=sys.stderr)
     print("\n\n\n", file=sys.stderr)
     print(data)
