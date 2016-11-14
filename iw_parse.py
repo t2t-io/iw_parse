@@ -286,7 +286,7 @@ def get_interfaces(interface="wlan0"):
 
 
 def byte_to_hex(b, padding=True):
-    x = hex(b)[2:]
+    x = hex(b)[2:].upper()
     y = x if len(x) > 1 else "0%s" % (x)
     return y if padding else x
 
